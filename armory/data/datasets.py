@@ -100,7 +100,9 @@ class ArmoryDataGenerator(DataGenerator):
             x[i] = x_list[i][0]
         return x
 
+    @tf.function
     def get_batch(self) -> Tuple[np.ndarray, Union[np.ndarray, List]]:
+        breakpoint()
         if self.variable_length or self.variable_y:
             # build the batch
             x_list, y_list = [], []
