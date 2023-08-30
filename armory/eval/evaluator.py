@@ -46,7 +46,7 @@ class Evaluator(object):
 
         self.config["eval_id"] = eval_id
         self.output_dir = os.path.join(self.host_paths.output_dir, eval_id)
-        self.tmp_dir = os.path.join(self.host_paths.tmp_dir, eval_id)
+        self.tmp_dir = os.path.join(self.host_paths.tmp_dir, eval_id + "_tmp")
 
         if self.config["sysconfig"].get("use_gpu", None):
             kwargs = dict(runtime="nvidia")
@@ -98,21 +98,27 @@ class Evaluator(object):
         if cuda_var_exists and self.no_docker:
             # Existing value should override armory flags
             log.warning(
-                "CUDA_VISIBLE_DEVICES is set; any Armoy gpu instructions will be ignored"
+                "CUDA_VISIBLE_DEVICES is set; any Armory gpu instructions will be ignored"
             )
+        log.warning(f"{self.config['sysconfig']}")
 
         # Set visible gpus
         if self.config["sysconfig"].get("use_gpu", None):
             gpus = self.config["sysconfig"].get("gpus")
             if gpus is not None:
-                if self.no_docker and not cuda_var_exists:
-                    self.extra_env_vars["CUDA_VISIBLE_DEVICES"] = gpus
-                if not self.no_docker:
-                    self.extra_env_vars["NVIDIA_VISIBLE_DEVICES"] = gpus
+                self.extra_env_vars["NVIDIA_VISIBLE_DEVICES"] = gpus
+                log.warning(
+                    f"NVIDIA_VISIBLE_DEVICES set to {gpus}; visible GPUs={os.getenv('CUDA_VISIBLE_DEVICES')}"
+                )
+                # if self.no_docker and not cuda_var_exists:
+                #    self.extra_env_vars["CUDA_VISIBLE_DEVICES"] = gpus
+                # if not self.no_docker:
+                #    self.extra_env_vars["NVIDIA_VISIBLE_DEVICES"] = gpus
         else:
             if self.no_docker and not cuda_var_exists:
                 # Block gpus for no-docker mode
                 self.extra_env_vars["CUDA_VISIBLE_DEVICES"] = "-1"
+                log.warning("Blocking GPUs...")
 
         if self.config["sysconfig"].get("set_pythonhashseed"):
             self.extra_env_vars["PYTHONHASHSEED"] = "0"

@@ -5,7 +5,7 @@ import numpy as np
 
 from armory.logs import log
 from armory.scenarios.poison import Poison
-from armory.scenarios.utils import from_categorical
+from armory.scenarios.utils import from_categorical, to_categorical
 from armory.utils import config_loading, triggers
 
 
@@ -60,6 +60,7 @@ class DatasetPoisonerSleeperAgent:
 
 class SleeperAgentScenario(Poison):
     def load_poisoner(self):
+        label_function = to_categorical
         adhoc_config = self.config.get("adhoc") or {}
         attack_config = copy.deepcopy(self.config["attack"])
         if attack_config.get("type") == "preloaded":
@@ -70,14 +71,13 @@ class SleeperAgentScenario(Poison):
         self.target_class = adhoc_config["target_class"]
 
         if self.use_poison:
-
             #  Create and train proxy model for gradient matching attack.
             proxy_config = copy.deepcopy(self.config["model"])
             proxy_model, _ = config_loading.load_model(proxy_config)
             log.info("Fitting proxy model for attack . . .")
             proxy_model.fit(
                 self.x_clean,
-                self.label_function(self.y_clean),
+                label_function(self.y_clean),
                 batch_size=self.fit_batch_size,
                 nb_epochs=self.train_epochs,
                 verbose=False,
@@ -142,18 +142,19 @@ class SleeperAgentScenario(Poison):
             self.poisoner = DatasetPoisonerSleeperAgent(
                 attack,
                 x_trigger,
-                self.label_function(y_trigger, num_classes=N_classes),
+                label_function(y_trigger, num_classes=N_classes),
                 x_test,  # test set passed for optional retraining of proxy model
-                self.label_function(y_test, num_classes=N_classes),
+                label_function(y_test, num_classes=N_classes),
             )
             self.test_poisoner = self.poisoner
 
     def poison_dataset(self):
         self.hub.set_context(stage="poison")
+        label_function = to_categorical
         if self.use_poison:
             self.x_poison, self.y_poison = self.poisoner.poison_dataset(
                 self.x_clean,
-                self.label_function(self.y_clean),
+                label_function(self.y_clean),
                 return_index=False,
             )
 
